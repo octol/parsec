@@ -21,7 +21,7 @@
     mutable_transmutes,
     no_mangle_const_items,
     unknown_crate_types,
-    warnings
+    //warnings
 )]
 #![deny(
     bad_style,
@@ -37,7 +37,7 @@
     unconditional_recursion,
     unknown_lints,
     unsafe_code,
-    unused,
+    //unused,
     unused_allocation,
     unused_attributes,
     unused_comparisons,
@@ -80,6 +80,7 @@ extern crate tiny_keccak;
 #[cfg(any(test, feature = "testing", feature = "dump-graphs"))]
 #[macro_use]
 extern crate unwrap;
+extern crate safe_crypto;
 
 mod block;
 mod dump_graph;

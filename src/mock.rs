@@ -9,6 +9,7 @@
 use id::{PublicId, SecretId};
 use network_event::NetworkEvent;
 use rand::{Rand, Rng};
+use safe_crypto::{gen_sign_keypair, PublicSignKey, SecretSignKey};
 use std::fmt::{self, Debug, Display, Formatter};
 
 const NAMES: &[&str] = &[
@@ -26,11 +27,17 @@ pub struct Signature(String);
 #[derive(Clone, Hash, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct PeerId {
     id: String,
+    pub_sign: PublicSignKey,
 }
 
 impl PeerId {
     pub fn new(id: &str) -> Self {
-        Self { id: id.to_string() }
+        let (pub_sign, _) = gen_sign_keypair();
+        Self {
+            id: id.to_string(),
+            pub_sign,
+        }
+
     }
 
     // Only being used by the dot_parser.

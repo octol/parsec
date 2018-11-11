@@ -147,6 +147,23 @@ fn main() {
     );
 
     let _ = scenarios
+        .add(
+            "parsec::functional_tests::handle_malice_accomplice",
+            |env| {
+                Schedule::new(
+                    env,
+                    &ScheduleOptions {
+                        genesis_size: 4,
+                        opaque_to_add: 1,
+                        ..Default::default()
+                    },
+                )
+            },
+        ).file("Alice", "alice.dot")
+        .file("Bob", "bob.dot")
+        .file("Carol", "carol.dot");
+
+    let _ = scenarios
         .add("benches", |env| {
             Schedule::new(
                 env,

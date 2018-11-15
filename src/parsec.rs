@@ -2323,6 +2323,13 @@ mod functional_tests {
         let a_17 = unwrap!(alice_contents.remove_latest_event());
 
         let mut alice = Parsec::from_parsed_contents(alice_contents);
+        // The dot file contains the hard coded hash for the first consensused block, the genesis
+        // group, and which happens to be generated using the mock implementation of safe_crypto.
+        // Restart consensus to correct this if mock is not set.
+        #[cfg(not(feature = "mock"))]
+        unwrap!(alice.restart_consensus(0, 1000));
+        #[cfg(not(feature = "mock"))]
+        unwrap!(alice.poll());
 
         // `Add(Eric)` should still be unconsensused since A_17 would be the first gossip event to
         // reach consensus on `Add(Eric)`, but it was removed from the graph.
@@ -2371,6 +2378,13 @@ mod functional_tests {
         // the correct order, i.e. after `Add(Eric)` at the point where `Add(Eric)` is consensused
         // but has not been returned by `poll()`.
         alice = Parsec::from_parsed_contents(parse_test_dot_file("alice.dot"));
+        // The dot file contains the hard coded hash for the first consensused block, the genesis
+        // group, and which happens to be generated using the mock implementation of safe_crypto.
+        // Restart consensus to correct this if mock is not set.
+        #[cfg(not(feature = "mock"))]
+        unwrap!(alice.restart_consensus(0, 1000));
+        #[cfg(not(feature = "mock"))]
+        unwrap!(alice.poll());
         unwrap!(alice.vote_for(vote.clone()));
         let mut unpolled_observations = alice.our_unpolled_observations();
         assert_eq!(*unwrap!(unpolled_observations.next()), add_eric);

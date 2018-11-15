@@ -22,6 +22,7 @@ before_script:
 script:
   - set -x;
     cargo fmt -- --check &&
+    cargo test --verbose --release &&
     cargo test --verbose --release --features=testing &&
     cargo test --verbose --release --features=testing,malice-detection &&
     cargo test --verbose --release --features=dump-graphs dot_parser &&

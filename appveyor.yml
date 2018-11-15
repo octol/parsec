@@ -31,5 +31,6 @@ build_script:
   - cargo check --verbose --release --all-targets --features=dump-graphs
 
 test_script:
+  - cargo test --verbose --release
   - cargo test --verbose --release --features=testing,malice-detection
   - cargo test --verbose --release --features=dump-graphs dot_parser

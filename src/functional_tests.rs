@@ -485,6 +485,7 @@ mod handle_malice {
     use id::SecretId;
     use mock::Transaction;
     use observation::Malice;
+    use observation::UnprovableMalice;
     use peer_list::PeerList;
     use peer_list::PeerState;
     use std::collections::BTreeMap;
@@ -969,10 +970,8 @@ mod handle_malice {
 
     fn create_invalid_accusation() -> (EventHash, TestParsec<Transaction, PeerId>) {
         // Generated with RNG seed: [3932887254, 691979681, 2029125979, 3359276664]
-        let mut alice_contents = parse_dot_file_with_test_name(
-            "alice.dot",
-            "functional_tests_handle_malice_accomplice",
-        );
+        let mut alice_contents =
+            parse_dot_file_with_test_name("alice.dot", "functional_tests_handle_malice_accomplice");
 
         let a_26_hash = *unwrap!(find_event_by_short_name(&alice_contents.graph, "A_26")).hash();
         let d_1_hash = *unwrap!(find_event_by_short_name(&alice_contents.graph, "D_1")).hash();
@@ -1004,7 +1003,7 @@ mod handle_malice {
                 .filter_map(|payload| match payload {
                     Observation::Accusation {
                         ref offender,
-                        malice: Malice::Accomplice(hash),
+                        malice: Malice::Unprovable(UnprovableMalice::Accomplice(hash)),
                     } => Some((offender, hash)),
                     _ => None,
                 }).next()
@@ -1014,7 +1013,6 @@ mod handle_malice {
     }
 
     #[test]
-    #[ignore]
     // Carol received gossip from Bob, which should have raised an accomplice accusation against
     // Alice but didn't.
     fn accomplice() {
@@ -1063,7 +1061,6 @@ mod handle_malice {
     }
 
     #[test]
-    #[ignore]
     // Carol received `invalid_accusation` from Alice first, then received gossip from Bob,
     // which should have raised an accomplice accusation against Alice but didn't.
     fn accomplice_separate() {
@@ -1103,7 +1100,6 @@ mod handle_malice {
     }
 
     #[test]
-    #[ignore]
     // Carol received `invalid_accusation` from Alice first, then receive gossip from Bob, which
     // doesn't contain the malice of Alice. Carol shall not raise accusation against Bob.
     fn accomplice_negative() {
@@ -1133,7 +1129,7 @@ mod handle_malice {
         // Verify that Carol didn't accuse Bob of `Accomplice`.
         assert!(our_votes(&carol).all(|payload| match payload {
             Observation::Accusation {
-                malice: Malice::Accomplice(_),
+                malice: Malice::Unprovable(UnprovableMalice::Accomplice(_)),
                 ..
             } => false,
             _ => true,

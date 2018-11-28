@@ -166,7 +166,7 @@ impl<T: NetworkEvent, P: PublicId> Event<T, P> {
 
     // Returns the index-by-creator of the last ancestor of this event created by the given peer.
     pub fn last_ancestor_by(&self, peer: &P) -> LastAncestor {
-        if self.cache.forking_peers.contains(peer) {
+        if self.is_forking_peer(peer) {
             LastAncestor::Fork
         } else {
             self.cache
@@ -175,6 +175,10 @@ impl<T: NetworkEvent, P: PublicId> Event<T, P> {
                 .map(|last_index| LastAncestor::Some(*last_index))
                 .unwrap_or(LastAncestor::None)
         }
+    }
+
+    pub(crate) fn is_forking_peer(&self, peer: &P) -> bool {
+        self.cache.forking_peers.contains(peer)
     }
 
     /// Returns `Some(vote)` if the event is for a vote of network event, otherwise returns `None`.

@@ -117,10 +117,6 @@ pub enum Malice<T: NetworkEvent, P: PublicId> {
     /// We receive a gossip containing an event whose creator should not be known to the sender.
     /// Contains hash of the sync event whose ancestor has the invalid creator.
     InvalidGossipCreator(EventHash),
-    /// The peer shall raise an accusation against another peer creating a malice.
-    /// Contains hash of the sync event whose creator shall detect such malice however failed to
-    /// raise an accusation.
-    Accomplice(EventHash),
     /// Event's creator is the same to its other_parent's creator. The accusation contains the
     /// original event so other peers can verify the accusation directly.
     OtherParentBySameCreator(Box<PackedEvent<T, P>>),
@@ -145,6 +141,8 @@ impl<T: NetworkEvent, P: PublicId> Malice<T, P> {
 // For internal diagnostics only. The value is ignored in comparison, ordering or hashing.
 #[derive(Clone, Debug)]
 pub enum UnprovableMalice {
+    // A node is not reporting malice when it should
+    Accomplice(EventHash),
     // A node is spamming us.
     Spam,
     // Other, unspecified malice.

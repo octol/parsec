@@ -7,13 +7,12 @@
 // permissions and limitations relating to use of the SAFE Network Software.
 
 use super::content::Content;
-#[cfg(all(test, feature = "mock", feature = "malice-detection"))]
 use super::event_hash::EventHash;
-#[cfg(all(test, feature = "mock", feature = "malice-detection"))]
+#[cfg(feature = "malice-detection")]
 use hash::Hash;
 use id::PublicId;
 use network_event::NetworkEvent;
-#[cfg(all(test, feature = "mock", feature = "malice-detection"))]
+#[cfg(feature = "malice-detection")]
 use serialise;
 use std::fmt::{self, Debug, Formatter};
 
@@ -38,10 +37,20 @@ impl<T: NetworkEvent, P: PublicId> Debug for PackedEvent<T, P> {
     }
 }
 
-#[cfg(all(test, feature = "mock", feature = "malice-detection"))]
+impl<T: NetworkEvent, P: PublicId> PackedEvent<T, P> {
+    pub(crate) fn other_parent(&self) -> Option<&EventHash> {
+        self.content.other_parent()
+    }
+}
+
+#[cfg(feature = "malice-detection")]
 impl<T: NetworkEvent, P: PublicId> PackedEvent<T, P> {
     pub(crate) fn self_parent(&self) -> Option<&EventHash> {
         self.content.self_parent()
+    }
+
+    pub(crate) fn creator(&self) -> &P {
+        &self.content.creator
     }
 
     pub(crate) fn hash(&self) -> EventHash {

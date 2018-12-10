@@ -987,6 +987,8 @@ mod handle_malice {
         let message = unwrap!(alice.create_gossip(Some(&PeerId::new("Bob"))));
         unwrap!(bob.handle_request(alice.our_pub_id(), message));
         assert!(bob.graph().contains(&invalid_accusation));
+        // Remove the invalid accusation event (B_31)
+        unwrap!(bob.remove_last_event());
 
         let mut carol = TestParsec::from_parsed_contents(parse_dot_file_with_test_name(
             "carol.dot",
@@ -994,28 +996,52 @@ mod handle_malice {
         ));
         assert!(!carol.graph().contains(&invalid_accusation));
 
-        // Send gossip from Bob to Carol, remove the accusation event
-        let mut message = unwrap!(bob.create_gossip(Some(&PeerId::new("Carol"))));
-        let accusation_event = unwrap!(message.packed_events.pop());
-        let bob_last_hash = unwrap!(accusation_event.self_parent());
+        // Send gossip from Bob to Carol, with the accusation event missing. Carol will see that
+        // the accusation event is missing, but is not going acuse Bob yet until she's sure.
+        let message = unwrap!(bob.create_gossip(Some(&PeerId::new("Carol"))));
         unwrap!(carol.handle_request(bob.our_pub_id(), message));
         assert!(carol.graph().contains(&invalid_accusation));
+        assert!(
+            our_votes(&carol)
+                .filter_map(|payload| match payload {
+                    Observation::Accusation {
+                        ref offender,
+                        malice: Malice::Unprovable(UnprovableMalice::Accomplice(hash)),
+                    } => Some((offender, hash)),
+                    _ => None,
+                }).next()
+                .is_none()
+        );
+
+        // Bob adds another event which he then sends to Carol, who now becomes sure that Bob
+        // didn't create the accusation he should have.
+        let b_30_hash = *unwrap!(find_event_by_short_name(bob.graph(), "B_30")).hash();
+        let b_31_replacement = Event::<Transaction, _>::new_from_observation(
+            b_30_hash,
+            Observation::OpaquePayload(Transaction::new("ABCD")),
+            bob.graph(),
+            bob.peer_list(),
+        );
+        unwrap!(bob.add_event(b_31_replacement));
+        let message = unwrap!(bob.create_gossip(Some(&PeerId::new("Carol"))));
+        unwrap!(carol.handle_request(bob.our_pub_id(), message));
 
         // Verify that Carol detected malice and accused Alice of `InvalidAccusation` and Bob of
         // `Accomplice`.
-        let (offender, hash) = unwrap!(our_votes(&carol)
-            .filter_map(|payload| match payload {
-                Observation::Accusation {
-                    ref offender,
-                    malice: Malice::InvalidAccusation(hash),
-                } => Some((offender, hash)),
-                _ => None,
-            })
-            .next());
+        let mut our_accusations = our_votes(&carol).filter_map(|payload| match payload {
+            Observation::Accusation {
+                ref offender,
+                malice: Malice::InvalidAccusation(hash),
+            } => Some((offender, hash)),
+            _ => None,
+        });
+        let (offender, hash) = unwrap!(our_accusations.next());
+
         assert_eq!(offender, alice.our_pub_id());
         assert_eq!(*hash, invalid_accusation);
+        assert!(our_accusations.next().is_none());
 
-        verify_accused_accomplice(&carol, bob.our_pub_id(), bob_last_hash);
+        verify_accused_accomplice(&carol, bob.our_pub_id(), &b_30_hash);
     }
 
     #[test]
@@ -1045,16 +1071,41 @@ mod handle_malice {
         let message = unwrap!(alice.create_gossip(Some(&PeerId::new("Bob"))));
         unwrap!(bob.handle_request(alice.our_pub_id(), message));
         assert!(bob.graph().contains(&invalid_accusation));
+        // Remove the invalid accusation event (B_31), making Bob an accomplice.
+        unwrap!(bob.remove_last_event());
 
-        // Send gossip from Bob to Carol, remove the accusation event
-        let mut message = unwrap!(bob.create_gossip(Some(&PeerId::new("Carol"))));
-        let accusation_event = unwrap!(message.packed_events.pop());
-        let bob_last_hash = unwrap!(accusation_event.self_parent());
+        // Send gossip from Bob to Carol, with the accusation event missing. Carol will see that
+        // the accusation event is missing, but is not going acuse Bob yet until she's sure.
+        let message = unwrap!(bob.create_gossip(Some(&PeerId::new("Carol"))));
         unwrap!(carol.handle_request(bob.our_pub_id(), message));
         assert!(carol.graph().contains(&invalid_accusation));
+        assert!(
+            our_votes(&carol)
+                .filter_map(|payload| match payload {
+                    Observation::Accusation {
+                        ref offender,
+                        malice: Malice::Unprovable(UnprovableMalice::Accomplice(hash)),
+                    } => Some((offender, hash)),
+                    _ => None,
+                }).next()
+                .is_none()
+        );
+
+        // Bob adds another event which he then sends to Carol, who now becomes sure that Bob
+        // didn't create the accusation he should have.
+        let b_30_hash = *unwrap!(find_event_by_short_name(bob.graph(), "B_30")).hash();
+        let b_31_replacement = Event::<Transaction, _>::new_from_observation(
+            b_30_hash,
+            Observation::OpaquePayload(Transaction::new("ABCD")),
+            bob.graph(),
+            bob.peer_list(),
+        );
+        unwrap!(bob.add_event(b_31_replacement));
+        let message = unwrap!(bob.create_gossip(Some(&PeerId::new("Carol"))));
+        unwrap!(carol.handle_request(bob.our_pub_id(), message));
 
         // Verify that Carol detected malice and accused Bob of `Accomplice`.
-        verify_accused_accomplice(&carol, bob.our_pub_id(), bob_last_hash);
+        verify_accused_accomplice(&carol, bob.our_pub_id(), &b_30_hash);
     }
 
     #[test]

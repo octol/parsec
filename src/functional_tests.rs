@@ -1146,6 +1146,79 @@ mod handle_malice {
     }
 
     #[test]
+    // Alice tries to frame Bob by gossiping to Carol with Bob's InvalidAccusation removed.
+    fn accomplice_framing_attempt() {
+        let (invalid_accusation, mut alice) = create_invalid_accusation();
+
+        let mut bob = TestParsec::from_parsed_contents(parse_dot_file_with_test_name(
+            "bob.dot",
+            "functional_tests_handle_malice_accomplice",
+        ));
+        assert!(!bob.graph().contains(&invalid_accusation));
+
+        // Send gossip from Alice to Bob
+        let message = unwrap!(alice.create_gossip(Some(&PeerId::new("Bob"))));
+        unwrap!(bob.handle_request(alice.our_pub_id(), message));
+        assert!(bob.graph().contains(&invalid_accusation));
+        // ..and back to Alice
+        let message = unwrap!(bob.create_gossip(Some(&PeerId::new("Alice"))));
+        unwrap!(alice.handle_request(bob.our_pub_id(), message));
+
+        // Alice raises an InvalidAccusation (A_29) against Bob's InvalidAccusation (B_31), remove
+        // it as we're not interested in it.
+        let (_, _alice_accusation_event_against_bob) = unwrap!(alice.remove_last_event());
+
+        // Then replace the sync event with one against B_30, effectively hiding Bob's accusation.
+        let (_, _a_28) = unwrap!(alice.remove_last_event());
+        let (_, _b_31) = unwrap!(alice.remove_last_event());
+        let b_30_hash = *unwrap!(find_event_by_short_name(alice.graph(), "B_30")).hash();
+        let a_27_hash = *unwrap!(find_event_by_short_name(alice.graph(), "A_27")).hash();
+        let a_28_replacement = Event::new_from_request(
+            a_27_hash,
+            b_30_hash,
+            &alice.graph(),
+            &alice.peer_list(),
+            &BTreeSet::new(),
+        );
+        unwrap!(alice.add_event(a_28_replacement));
+
+        let mut carol = TestParsec::from_parsed_contents(parse_dot_file_with_test_name(
+            "carol.dot",
+            "functional_tests_handle_malice_accomplice",
+        ));
+        assert!(!carol.graph().contains(&invalid_accusation));
+
+        // Send gossip from Alice to Carol
+        let message = unwrap!(alice.create_gossip(Some(&PeerId::new("Carol"))));
+        unwrap!(carol.handle_request(alice.our_pub_id(), message));
+        assert!(carol.graph().contains(&invalid_accusation));
+        assert!(
+            our_votes(&carol)
+                .filter_map(|payload| match payload {
+                    Observation::Accusation {
+                        ref offender,
+                        malice: Malice::Unprovable(UnprovableMalice::Accomplice(hash)),
+                    } => Some((offender, hash)),
+                    _ => None,
+                }).next()
+                .is_none()
+        );
+
+        // Bob sends his side of the story, the honest side, to Carol
+        let message = unwrap!(bob.create_gossip(Some(&PeerId::new("Carol"))));
+        unwrap!(carol.handle_request(alice.our_pub_id(), message));
+
+        // Verify that Carol didn't accuse Bob of `Accomplice`.
+        assert!(our_votes(&carol).all(|payload| match payload {
+            Observation::Accusation {
+                malice: Malice::Unprovable(UnprovableMalice::Accomplice(_)),
+                ..
+            } => false,
+            _ => true,
+        }));
+    }
+
+    #[test]
     fn handle_fork() {
         // In this scenario, Alice creates two descendants of A_3 and sends one of them to Bob,
         // and the other one to Dave. When Bob gossips to Dave afterwards, Dave is made aware of

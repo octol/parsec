@@ -617,7 +617,9 @@ impl<T: NetworkEvent, S: SecretId> Parsec<T, S> {
 
                             // See if this event now allows us to act on any of the accusations in
                             // candidate_accomplice_accusations
-                            self.act_on_accomplice_accusation_candidates_we_can_now_prove();
+                            self.act_on_accomplice_accusation_candidates_we_can_now_prove(
+                                event_index,
+                            );
                         }
                     }
                     UnpackedEvent::Known(index) => {
@@ -2195,11 +2197,14 @@ impl<T: NetworkEvent, S: SecretId> Parsec<T, S> {
         }
     }
 
-    fn act_on_accomplice_accusation_candidates_we_can_now_prove(&mut self) {
+    fn act_on_accomplice_accusation_candidates_we_can_now_prove(
+        &mut self,
+        current_event: EventIndex,
+    ) {
         let accomplice_accusations_we_can_act_on = self
             .candidate_accomplice_accusations
             .iter()
-            .filter(|(index, creator, _malice)| {
+            .filter(|(index, creator, _malice, _starting_index)| {
                 self.peer_list
                     .last_event(&creator)
                     .map(|last_event| index.topological_index() < last_event.topological_index())
@@ -2207,14 +2212,21 @@ impl<T: NetworkEvent, S: SecretId> Parsec<T, S> {
             }).cloned()
             .collect::<CandidateAccompliceAccusations<_, _>>();
 
-        for (index, creator, malice) in accomplice_accusations_we_can_act_on {
-            if !self.unprovable_offenders.contains(&creator) {
-                let _ = self.unprovable_offenders.insert(creator.clone());
-                self.accuse(creator.clone(), malice.clone());
+        for (index, creator, malice, starting_index) in accomplice_accusations_we_can_act_on {
+            if self.detect_accomplice_for_pending_events(&creator, current_event, starting_index)
+                || self.detect_accomplice_for_past_events(&creator, current_event, starting_index)
+            {
+                if !self.unprovable_offenders.contains(&creator) {
+                    let _ = self.unprovable_offenders.insert(creator.clone());
+                    self.accuse(creator.clone(), malice.clone());
+                }
+                let _ = self.candidate_accomplice_accusations.remove(&(
+                    index,
+                    creator,
+                    malice,
+                    starting_index,
+                ));
             }
-            let _ = self
-                .candidate_accomplice_accusations
-                .remove(&(index, creator, malice));
         }
     }
 
@@ -2236,7 +2248,7 @@ impl<T: NetworkEvent, S: SecretId> Parsec<T, S> {
             .and_then(|event| self.graph.get_index(event))
             .ok_or(Error::Logic)?;
 
-        if self.detect_accomplice_for_pending_events(&event_creator, starting_index)
+        if self.detect_accomplice_for_pending_events(&event_creator, event_index, starting_index)
             || self.detect_accomplice_for_past_events(&event_creator, event_index, starting_index)
         {
             let first_event_in_chunk = self
@@ -2248,6 +2260,7 @@ impl<T: NetworkEvent, S: SecretId> Parsec<T, S> {
                 event_index,
                 event_creator.clone(),
                 Malice::Unprovable(UnprovableMalice::Accomplice(first_event_in_chunk)),
+                starting_index,
             ));
         }
 
@@ -2257,6 +2270,7 @@ impl<T: NetworkEvent, S: SecretId> Parsec<T, S> {
     fn detect_accomplice_for_pending_events(
         &self,
         event_creator: &S::PublicId,
+        current_event: EventIndex,
         starting_event: EventIndex,
     ) -> bool {
         let accusations_by_peer_since_starter_event =
@@ -2265,10 +2279,11 @@ impl<T: NetworkEvent, S: SecretId> Parsec<T, S> {
         self.pending_accusations
             .iter()
             .filter(|(off, _)| off != event_creator)
-            .any(|pending_accusation| {
-                !accusations_by_peer_since_starter_event
-                    .iter()
-                    .any(|peer_accusation| peer_accusation == pending_accusation)
+            .any(|(offender, malice)| {
+                (self.malicious_event_is_ancestor_of_this_event(&malice, current_event)
+                    && !accusations_by_peer_since_starter_event
+                        .iter()
+                        .any(|(off, mal)| (off, mal) == (offender, &malice)))
             })
     }
 
@@ -2377,7 +2392,7 @@ enum PostProcessAction {
 
 type Accusations<T, P> = Vec<(P, Malice<T, P>)>;
 #[cfg(feature = "malice-detection")]
-type CandidateAccompliceAccusations<T, P> = BTreeSet<(EventIndex, P, Malice<T, P>)>;
+type CandidateAccompliceAccusations<T, P> = BTreeSet<(EventIndex, P, Malice<T, P>, EventIndex)>;
 
 #[cfg(any(all(test, feature = "mock"), feature = "testing"))]
 impl Parsec<Transaction, PeerId> {

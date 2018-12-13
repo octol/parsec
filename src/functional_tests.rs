@@ -480,7 +480,6 @@ mod handle_malice {
     use id::SecretId;
     use mock::Transaction;
     use observation::Malice;
-    use observation::UnprovableMalice;
     use peer_list::PeerList;
     use peer_list::PeerState;
     use std::collections::BTreeMap;
@@ -962,7 +961,7 @@ mod handle_malice {
             .filter_map(|payload| match payload {
                 Observation::Accusation {
                     ref offender,
-                    malice: Malice::Unprovable(UnprovableMalice::Accomplice(hash)),
+                    malice: Malice::Accomplice(hash),
                 } => Some((offender, hash)),
                 _ => None,
             })
@@ -1005,7 +1004,7 @@ mod handle_malice {
             .filter_map(|payload| match payload {
                 Observation::Accusation {
                     ref offender,
-                    malice: Malice::Unprovable(UnprovableMalice::Accomplice(hash)),
+                    malice: Malice::Accomplice(hash),
                 } => Some((offender, hash)),
                 _ => None,
             })
@@ -1082,7 +1081,7 @@ mod handle_malice {
             .filter_map(|payload| match payload {
                 Observation::Accusation {
                     ref offender,
-                    malice: Malice::Unprovable(UnprovableMalice::Accomplice(hash)),
+                    malice: Malice::Accomplice(hash),
                 } => Some((offender, hash)),
                 _ => None,
             })
@@ -1136,7 +1135,7 @@ mod handle_malice {
         // Verify that Carol didn't accuse Bob of `Accomplice`.
         assert!(our_votes(&carol).all(|payload| match payload {
             Observation::Accusation {
-                malice: Malice::Unprovable(UnprovableMalice::Accomplice(_)),
+                malice: Malice::Accomplice(_),
                 ..
             } => false,
             _ => true,
@@ -1194,7 +1193,7 @@ mod handle_malice {
             .filter_map(|payload| match payload {
                 Observation::Accusation {
                     ref offender,
-                    malice: Malice::Unprovable(UnprovableMalice::Accomplice(hash)),
+                    malice: Malice::Accomplice(hash),
                 } => Some((offender, hash)),
                 _ => None,
             })
@@ -1208,7 +1207,7 @@ mod handle_malice {
         // Verify that Carol didn't accuse Bob of `Accomplice`.
         assert!(our_votes(&carol).all(|payload| match payload {
             Observation::Accusation {
-                malice: Malice::Unprovable(UnprovableMalice::Accomplice(_)),
+                malice: Malice::Accomplice(_),
                 ..
             } => false,
             _ => true,

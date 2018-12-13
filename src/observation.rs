@@ -114,6 +114,8 @@ pub enum Malice<T: NetworkEvent, P: PublicId> {
     SelfParentByDifferentCreator(Box<PackedEvent<T, P>>),
     /// Detectable but unprovable malice. Relies on consensus.
     Unprovable(UnprovableMalice),
+    /// A node is not reporting malice when it should
+    Accomplice(EventHash),
     // TODO: add other malice variants
 }
 
@@ -130,8 +132,6 @@ impl<T: NetworkEvent, P: PublicId> Malice<T, P> {
 // For internal diagnostics only. The value is ignored in comparison, ordering or hashing.
 #[derive(Clone, Debug)]
 pub enum UnprovableMalice {
-    // A node is not reporting malice when it should
-    Accomplice(EventHash),
     // A node is spamming us.
     Spam,
     // Other, unspecified malice.

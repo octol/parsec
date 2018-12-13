@@ -13,7 +13,6 @@ mod event_hash;
 mod graph;
 mod messages;
 mod packed_event;
-mod split_on_first;
 
 #[cfg(test)]
 pub(super) use self::event::find_event_by_short_name;
@@ -28,4 +27,3 @@ pub(super) use self::graph::snapshot::GraphSnapshot;
 pub(super) use self::graph::{EventIndex, Graph, IndexedEventRef};
 pub use self::messages::{Request, Response};
 pub use self::packed_event::PackedEvent;
-pub use self::split_on_first::split_on_first;

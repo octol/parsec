@@ -2209,7 +2209,8 @@ impl<T: NetworkEvent, S: SecretId> Parsec<T, S> {
                     .iter_from(index.topological_index())
                     .filter(|event| event.creator() == creator)
                     .any(|event| event.payload().is_none())
-            }).cloned()
+            })
+            .cloned()
             .collect::<CandidateAccompliceAccusations<_, _>>();
 
         for (index, creator, malice, starting_index) in accomplice_accusations_we_can_act_on {

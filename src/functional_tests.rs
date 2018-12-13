@@ -1001,17 +1001,16 @@ mod handle_malice {
         let message = unwrap!(bob.create_gossip(Some(&PeerId::new("Carol"))));
         unwrap!(carol.handle_request(bob.our_pub_id(), message));
         assert!(carol.graph().contains(&invalid_accusation));
-        assert!(
-            our_votes(&carol)
-                .filter_map(|payload| match payload {
-                    Observation::Accusation {
-                        ref offender,
-                        malice: Malice::Unprovable(UnprovableMalice::Accomplice(hash)),
-                    } => Some((offender, hash)),
-                    _ => None,
-                }).next()
-                .is_none()
-        );
+        assert!(our_votes(&carol)
+            .filter_map(|payload| match payload {
+                Observation::Accusation {
+                    ref offender,
+                    malice: Malice::Unprovable(UnprovableMalice::Accomplice(hash)),
+                } => Some((offender, hash)),
+                _ => None,
+            })
+            .next()
+            .is_none());
 
         // Bob adds another event which he then sends to Carol, who now becomes sure that Bob
         // didn't create the accusation he should have.
@@ -1079,17 +1078,16 @@ mod handle_malice {
         let message = unwrap!(bob.create_gossip(Some(&PeerId::new("Carol"))));
         unwrap!(carol.handle_request(bob.our_pub_id(), message));
         assert!(carol.graph().contains(&invalid_accusation));
-        assert!(
-            our_votes(&carol)
-                .filter_map(|payload| match payload {
-                    Observation::Accusation {
-                        ref offender,
-                        malice: Malice::Unprovable(UnprovableMalice::Accomplice(hash)),
-                    } => Some((offender, hash)),
-                    _ => None,
-                }).next()
-                .is_none()
-        );
+        assert!(our_votes(&carol)
+            .filter_map(|payload| match payload {
+                Observation::Accusation {
+                    ref offender,
+                    malice: Malice::Unprovable(UnprovableMalice::Accomplice(hash)),
+                } => Some((offender, hash)),
+                _ => None,
+            })
+            .next()
+            .is_none());
 
         // Bob adds another event which he then sends to Carol, who now becomes sure that Bob
         // didn't create the accusation he should have.
@@ -1192,17 +1190,16 @@ mod handle_malice {
         let message = unwrap!(alice.create_gossip(Some(&PeerId::new("Carol"))));
         unwrap!(carol.handle_request(alice.our_pub_id(), message));
         assert!(carol.graph().contains(&invalid_accusation));
-        assert!(
-            our_votes(&carol)
-                .filter_map(|payload| match payload {
-                    Observation::Accusation {
-                        ref offender,
-                        malice: Malice::Unprovable(UnprovableMalice::Accomplice(hash)),
-                    } => Some((offender, hash)),
-                    _ => None,
-                }).next()
-                .is_none()
-        );
+        assert!(our_votes(&carol)
+            .filter_map(|payload| match payload {
+                Observation::Accusation {
+                    ref offender,
+                    malice: Malice::Unprovable(UnprovableMalice::Accomplice(hash)),
+                } => Some((offender, hash)),
+                _ => None,
+            })
+            .next()
+            .is_none());
 
         // Bob sends his side of the story, the honest side, to Carol
         let message = unwrap!(bob.create_gossip(Some(&PeerId::new("Carol"))));

@@ -2205,10 +2205,10 @@ impl<T: NetworkEvent, S: SecretId> Parsec<T, S> {
             .candidate_accomplice_accusations
             .iter()
             .filter(|(index, creator, _, _)| {
-                self.peer_list
-                    .last_event(&creator)
-                    .map(|last_event| index.topological_index() < last_event.topological_index())
-                    .unwrap_or(false)
+                self.graph
+                    .iter_from(index.topological_index())
+                    .filter(|event| event.creator() == creator)
+                    .any(|event| event.payload().is_none())
             }).cloned()
             .collect::<CandidateAccompliceAccusations<_, _>>();
 

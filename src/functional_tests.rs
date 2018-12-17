@@ -1021,6 +1021,7 @@ mod handle_malice {
             bob.graph(),
             bob.peer_list(),
         );
+        let b_31_hash = *b_31_replacement.hash();
         unwrap!(bob.add_event(b_31_replacement));
         let message = unwrap!(bob.create_gossip(Some(&PeerId::new("Carol"))));
         unwrap!(carol.handle_request(bob.our_pub_id(), message));
@@ -1040,7 +1041,7 @@ mod handle_malice {
         assert_eq!(*hash, invalid_accusation);
         assert!(our_accusations.next().is_none());
 
-        verify_accused_accomplice(&carol, bob.our_pub_id(), &b_30_hash);
+        verify_accused_accomplice(&carol, bob.our_pub_id(), &b_31_hash);
     }
 
     #[test]
@@ -1098,12 +1099,13 @@ mod handle_malice {
             bob.graph(),
             bob.peer_list(),
         );
+        let b_31_hash = *b_31_replacement.hash();
         unwrap!(bob.add_event(b_31_replacement));
         let message = unwrap!(bob.create_gossip(Some(&PeerId::new("Carol"))));
         unwrap!(carol.handle_request(bob.our_pub_id(), message));
 
         // Verify that Carol detected malice and accused Bob of `Accomplice`.
-        verify_accused_accomplice(&carol, bob.our_pub_id(), &b_30_hash);
+        verify_accused_accomplice(&carol, bob.our_pub_id(), &b_31_hash);
     }
 
     #[test]

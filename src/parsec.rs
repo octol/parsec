@@ -2226,7 +2226,12 @@ impl<T: NetworkEvent, S: SecretId> Parsec<T, S> {
                 && !self.unprovable_offenders.contains(&creator)
             {
                 let _ = self.unprovable_offenders.insert(creator.clone());
-                self.accuse(creator.clone(), malice.clone());
+                // Repoint the malice event to the event where we're actually certain
+                let current = *self.get_known_event(current)?.hash();
+                self.accuse(
+                    creator.clone(),
+                    Malice::Unprovable(UnprovableMalice::Accomplice(current)),
+                );
             }
             let _ = self.candidate_accomplice_accusations.remove(&(
                 index,

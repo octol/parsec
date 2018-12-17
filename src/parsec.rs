@@ -2215,25 +2215,25 @@ impl<T: NetworkEvent, S: SecretId> Parsec<T, S> {
                                 Observation::Accusation { .. } => false,
                                 _ => true,
                             })
-                            .unwrap_or(false)
+                            .unwrap_or(true)
                     })
             })
             .cloned()
             .collect::<CandidateAccompliceAccusations<_, _>>();
 
         for (index, creator, malice, starting_index) in accomplice_accusations_we_can_act_on {
-            if self.detect_accomplice_for_our_accusations(current, starting_index)? {
-                if !self.unprovable_offenders.contains(&creator) {
-                    let _ = self.unprovable_offenders.insert(creator.clone());
-                    self.accuse(creator.clone(), malice.clone());
-                }
-                let _ = self.candidate_accomplice_accusations.remove(&(
-                    index,
-                    creator,
-                    malice,
-                    starting_index,
-                ));
+            if self.detect_accomplice_for_our_accusations(current, starting_index)?
+                && !self.unprovable_offenders.contains(&creator)
+            {
+                let _ = self.unprovable_offenders.insert(creator.clone());
+                self.accuse(creator.clone(), malice.clone());
             }
+            let _ = self.candidate_accomplice_accusations.remove(&(
+                index,
+                creator,
+                malice,
+                starting_index,
+            ));
         }
         Ok(())
     }

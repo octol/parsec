@@ -36,10 +36,6 @@ impl<T: NetworkEvent, P: PublicId> Debug for PackedEvent<T, P> {
 }
 
 impl<T: NetworkEvent, P: PublicId> PackedEvent<T, P> {
-    pub(crate) fn other_parent(&self) -> Option<&EventHash> {
-        self.content.other_parent()
-    }
-
     pub(crate) fn compute_hash(&self) -> EventHash {
         EventHash(Hash::from(serialise(&self.content).as_slice()))
     }

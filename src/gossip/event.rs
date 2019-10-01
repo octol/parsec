@@ -379,6 +379,13 @@ impl<P: PublicId> Event<P> {
         }
     }
 
+    pub fn is_observation(&self) -> bool {
+        match self.content.cause {
+            Cause::Observation { .. } => true,
+            _ => false,
+        }
+    }
+
     pub fn is_requesting(&self) -> bool {
         if let Cause::Requesting { .. } = self.content.cause {
             true

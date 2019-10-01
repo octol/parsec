@@ -54,6 +54,53 @@ use std::{
 
 pub(crate) type KeyGenId = usize;
 
+struct VoteStatus {
+    payload_key: ObservationKey,
+    expected_voters: BTreeSet<PeerIndex>,
+    voted: BTreeSet<PeerIndex>,
+    consensused: bool,
+}
+
+impl VoteStatus {
+    fn new<P: PublicId>(event: &Event<P>, voters: BTreeSet<PeerIndex>) -> Self {
+        let payload_key = if let Some(payload_key) = event.payload_key() {
+            *payload_key
+        } else {
+            panic!("input event shall be an observation!");
+        };
+        let mut vote_status = VoteStatus {
+            payload_key,
+            expected_voters: voters,
+            voted: BTreeSet::new(),
+            consensused: false,
+        };
+        let _ = vote_status.add_vote(event);
+        vote_status
+    }
+
+    fn add_vote<P: PublicId>(&mut self, event: &Event<P>) -> bool {
+        if Some(&self.payload_key) == event.payload_key() {
+            let _ = self.voted.insert(event.creator());
+            true
+        } else {
+            false
+        }
+    }
+
+    fn set_consensused(&mut self, payload_key: &ObservationKey) -> bool {
+        if &self.payload_key == payload_key {
+            self.consensused = true;
+        }
+        self.consensused
+    }
+
+    fn is_unresponsive(&self, peer_index: PeerIndex) -> bool {
+        self.consensused
+            && self.expected_voters.contains(&peer_index)
+            && !self.voted.contains(&peer_index)
+    }
+}
+
 /// The main object which manages creating and receiving gossip about network events from peers, and
 /// which provides a sequence of consensused [Block](struct.Block.html)s by applying the PARSEC
 /// algorithm. A `Block`'s payload, described by the [Observation](enum.Observation.html) type, is
@@ -121,6 +168,8 @@ pub struct Parsec<T: NetworkEvent, S: SecretId> {
     ignore_process_events: bool,
     // Provided RNG: Needs to be cryptographically secure RNG as it is used for DKG key generation.
     secure_rng: ParsecRng,
+    // Including all on-going, consensused and polled blocks
+    vote_status: VecDeque<VoteStatus>,
 }
 
 impl<T: NetworkEvent, S: SecretId> Parsec<T, S> {
@@ -265,6 +314,7 @@ impl<T: NetworkEvent, S: SecretId> Parsec<T, S> {
             ignore_process_events: false,
 
             secure_rng: ParsecRng::new(secure_rng),
+            vote_status: VecDeque::default(),
         }
     }
 
@@ -696,6 +746,10 @@ impl<T: NetworkEvent, S: SecretId> Parsec<T, S> {
                 }
             });
 
+        if event.is_observation() {
+            self.add_observation_vote(&event);
+        }
+
         let event_index = self.insert_event(event);
 
         let _ = unconsensused_payload_key.map(|payload_key| {
@@ -713,6 +767,71 @@ impl<T: NetworkEvent, S: SecretId> Parsec<T, S> {
         }
 
         Ok(event_index)
+    }
+
+    fn add_observation_vote(&mut self, event: &Event<S::PublicId>) {
+        if !self
+            .vote_status
+            .iter_mut()
+            .any(|vote_status| vote_status.add_vote(event))
+        {
+            let voters: BTreeSet<PeerIndex> = self
+                .peer_list
+                .voters()
+                .map(|(peer_index, _)| peer_index)
+                .collect();
+            self.vote_status.push_back(VoteStatus::new(event, voters))
+        }
+    }
+
+    fn set_vote_consensused(&mut self, payload_keys: &Vec<ObservationKey>) {
+        for payload_key in payload_keys.iter() {
+            let _ = self
+                .vote_status
+                .iter_mut()
+                .any(|vote_status| vote_status.set_consensused(payload_key));
+        }
+    }
+
+    fn check_vote_status(&mut self) {
+        let threshold = ::std::cmp::min(
+            self.peer_list.voters().count() / 3,
+            self.vote_status.len() / 3,
+        );
+
+        // Only keep 10 * threshold consensused voting status and the unconsensused ones among them.
+        let mut concensused = self
+            .vote_status
+            .iter()
+            .filter(|vote_status| vote_status.consensused)
+            .count();
+        while concensused > 10 * threshold {
+            if let Some(vote_status) = self.vote_status.pop_front() {
+                if vote_status.consensused {
+                    concensused -= 1;
+                }
+            }
+        }
+
+        let peers_info: BTreeSet<(PeerIndex, S::PublicId)> = self
+            .peer_list
+            .voters()
+            .map(|(peer_index, peer)| (peer_index, peer.id().clone()))
+            .collect();
+        for (peer_index, peer_id) in peers_info.iter() {
+            if self
+                .vote_status
+                .iter()
+                .filter(|vote_status| vote_status.is_unresponsive(*peer_index))
+                .count()
+                > threshold
+            {
+                let _ = self.vote_for(Observation::Remove {
+                    peer_id: peer_id.clone(),
+                    related_info: Vec::new(),
+                });
+            }
+        }
     }
 
     // Create initial event for this node and insert it into the graph. This must be called when
@@ -759,6 +878,8 @@ impl<T: NetworkEvent, S: SecretId> Parsec<T, S> {
         if payload_keys.is_empty() {
             return Ok(PostProcessAction::Continue);
         }
+
+        self.set_vote_consensused(&payload_keys);
 
         self.output_consensus_info(&payload_keys);
 
@@ -1570,6 +1691,9 @@ impl<T: NetworkEvent, S: SecretId> Parsec<T, S> {
         }
 
         let _ = self.add_event(event)?;
+
+        self.check_vote_status();
+
         Ok(())
     }
 

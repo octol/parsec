@@ -200,6 +200,81 @@ fn faulty_nodes_terminate_at_random_points() {
 }
 
 #[test]
+fn faulty_node_always_unresponsive_and_removed() {
+    let num_peers = 10;
+    let num_observations = 10;
+    let num_faulty = 1;
+    let mut env = Environment::new(SEED);
+
+    let mut failures = BTreeMap::new();
+    let _ = failures.insert(0, num_faulty);
+    let options = ScheduleOptions {
+        genesis_size: num_peers,
+        opaque_to_add: num_observations,
+        deterministic_failures: failures,
+        ..Default::default()
+    };
+    let schedule = Schedule::new(&mut env, &options);
+
+    let result = env.execute_schedule(schedule);
+    assert!(result.is_ok(), "{:?}", result);
+
+    // Faulty nodes should have been detected as unresponsive and removed
+    let responsive_nodes = num_peers - num_faulty;
+    assert_eq!(env.network.peers.len(), responsive_nodes);
+}
+
+#[test]
+fn faulty_node_unresponsive_at_random_point_and_removed() {
+    let num_peers = 10;
+    let num_observations = 10;
+    let num_faulty = 1;
+    let mut env = Environment::new(SEED);
+
+    let mut failures = BTreeMap::new();
+    let _ = failures.insert(env.rng.gen_range(10, 50), num_faulty);
+    let options = ScheduleOptions {
+        genesis_size: num_peers,
+        opaque_to_add: num_observations,
+        deterministic_failures: failures,
+        ..Default::default()
+    };
+    let schedule = Schedule::new(&mut env, &options);
+
+    let result = env.execute_schedule(schedule);
+    assert!(result.is_ok(), "{:?}", result);
+
+    // Faulty nodes should have been detected as unresponsive and removed
+    let responsive_nodes = num_peers - num_faulty;
+    assert_eq!(env.network.peers.len(), responsive_nodes);
+}
+
+#[test]
+fn faulty_third_unresponsive_concurrently_and_removed() {
+    let num_peers = 10;
+    let num_observations = 10;
+    let num_faulty = (num_peers - 1) / 3;
+    let mut env = Environment::new(SEED);
+
+    let mut failures = BTreeMap::new();
+    let _ = failures.insert(env.rng.gen_range(10, 50), num_faulty);
+    let options = ScheduleOptions {
+        genesis_size: num_peers,
+        opaque_to_add: num_observations,
+        deterministic_failures: failures,
+        ..Default::default()
+    };
+    let schedule = Schedule::new(&mut env, &options);
+
+    let result = env.execute_schedule(schedule);
+    assert!(result.is_ok(), "{:?}", result);
+
+    // Faulty nodes should have been detected as unresponsive and removed
+    let responsive_nodes = num_peers - num_faulty;
+    assert_eq!(env.network.peers.len(), responsive_nodes);
+}
+
+#[test]
 fn random_schedule_no_delays() {
     let num_observations = 10;
     let mut env = Environment::new(SEED);
